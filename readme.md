@@ -281,3 +281,186 @@ Tham số:
 >`-o  singlefile.mender` - Output artifact.
 
 Nếu thành công sẽ có file output với tên đã chỉ định tạo ra trong thư mục hiện tại.
+
+# Xem log trên `app-boards`
+
+Cơ chế log của mender: khi mender-client nhận deployment từ mender-server, mọi log của quá trình đó sẽ được lưu vào một file tại thư mục `/data/mender/` và có tên là `deployments.<stt>.<hash-deployment>.log`. `<stt>` là số thứ tự các deployment sắp xếp theo thời gian, lần deploy gần nhất có `<stt>` là `0001`, lần gần thứ 2 là `0001`,... `<hash-deployment>` là mã hash của deployment. Nội dung file log là json line-by-line có dạng:
+ ```json
+{
+	"level": <log level>,
+	"message": <log message>,
+	"timestamp": <thời gian>
+}
+ ```
+
+Nếu quá trình deploy đã hoàn thành, có thể xem file log bằng cách `cat` file trên ra màn hình.
+
+Nếu quá trình deploy đang diễn ra, để xem trực tiếp file log trên thì dùng `sudo tail -f <file>.log`. Ví dụ `sudo tail -f /data/mender/deployments.0001.15897069-89de-4f3b-bb34-9ccc73863002.log`
+
+File log có nội dung (json đã được format bằng vscode):
+
+```json
+// Intro
+{
+	"level": "info",
+	"message": "Running Mender client version: 3.2.1",
+	"timestamp": "2022-05-23T04:37:00+01:00"
+}
+// Vào trạng thái Download
+{
+	"level": "info",
+	"message": "State transition: update-fetch [Download_Enter] -\u003e update-store [Download_Enter]",
+	"timestamp": "2022-05-23T04:37:02+01:00"
+}
+{
+	"level": "info",
+	"message": "No public key was provided for authenticating the artifact",
+	"timestamp": "2022-05-23T04:37:03+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: update-store [Download_Enter] -\u003e update-after-store [Download_Leave]",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+// Ròi trạng thái Download
+{
+	"level": "info",
+	"message": "State transition: update-after-store [Download_Leave] -\u003e mender-update-control-refresh-maps [none]",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+{
+	"level": "info",
+	"message": "Validating the Update Info: https://s3.amazonaws.com/hosted-mender-artifacts/625abda96735b19c83e80a36/f379fb76-5915-4572-8baa-c73cfde2ef9f?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=AKIAQWI25QR6NDALMYE2%2F20220523%2Fus-east-1%2Fs3%2Faws4_request\u0026X-Amz-Date=20220523T033705Z\u0026X-Amz-Expires=86400\u0026X-Amz-SignedHeaders=host\u0026response-content-type=application%2Fvnd.mender-artifact\u0026X-Amz-Signature=f706f0d5f3bdd589f4ad61eccef398239f7164c8dbeaf77138665fc33de49aa5 [name: singlefile-blink4; devices: [raspberrypi4]]",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control-refresh-maps [none] -\u003e mender-update-control [none]",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control [none] -\u003e update-install [ArtifactInstall]",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+// Vào trạng thái Insttall, thực thi script ArtifactInstall_Enter_01_User_Confirmation-abc.sh
+{
+	"level": "info",
+	"message": "Executing script: ArtifactInstall_Enter_01_User_Confirmation-abc.sh",
+	"timestamp": "2022-05-23T04:37:05+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: update-install [ArtifactInstall] -\u003e mender-update-control-refresh-maps [none]",
+	"timestamp": "2022-05-23T04:37:06+01:00"
+}
+// Rời trạng thái Install, thực thi script ArtifactInstall_Leave_01_User_Confirmation-abc.sh
+{
+	"level": "info",
+	"message": "Executing script: ArtifactInstall_Leave_01_User_Confirmation-abc.sh",
+	"timestamp": "2022-05-23T04:37:06+01:00"
+}
+// In ra stderr của script đã thực thi
+{
+	"level": "info",
+	"message": "Collected output (stderr) while running script /var/lib/mender/scripts/ArtifactInstall_Leave_01_User_Confirmation-abc.sh\nEcho to stderr from State script\nnohup: missing operand\nTry 'nohup --help' for more information.\n\n---------- end of script output",
+	"timestamp": "2022-05-23T04:37:06+01:00"
+}
+// Lỗi
+{
+	"level": "error",
+	"message": "Error receiving scheduled update data: failed to check update info on the server. Response: \u0026{429 Too Many Requests 429 HTTP/1.1 1 1 map[Connection:[keep-alive] Content-Length:[0] Content-Type:[application/json; charset=utf-8] Date:[Mon, 23 May 2022 03:37:07 GMT] X-Men-Requestid:[60b7577e-8c22-4d52-a030-ce353bfaf10f]] 0x18a2bf0 0 [] false false map[] 0x1ce2d00 \u003cnil\u003e}",
+	"timestamp": "2022-05-23T04:37:07+01:00"
+}
+// Lỗi
+{
+	"level": "error",
+	"message": "Update control map check failed: transient error: failed to check update info on the server. Response: \u0026{429 Too Many Requests 429 HTTP/1.1 1 1 map[Connection:[keep-alive] Content-Length:[0] Content-Type:[application/json; charset=utf-8] Date:[Mon, 23 May 2022 03:37:07 GMT] X-Men-Requestid:[60b7577e-8c22-4d52-a030-ce353bfaf10f]] 0x18a2bf0 0 [] false false map[] 0x1ce2d00 \u003cnil\u003e}, retrying...",
+	"timestamp": "2022-05-23T04:37:07+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control-refresh-maps [none] -\u003e mender-update-control-retry-refresh-maps [none]",
+	"timestamp": "2022-05-23T04:37:07+01:00"
+}
+// Chờ 1 phút, sau đó chạy lại Sync
+{
+	"level": "info",
+	"message": "Wait 1m0s before next update control map fetch/update attempt",
+	"timestamp": "2022-05-23T04:37:07+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control-retry-refresh-maps [none] -\u003e mender-update-control-refresh-maps [none]",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Validating the Update Info: https://s3.amazonaws.com/hosted-mender-artifacts/625abda96735b19c83e80a36/f379fb76-5915-4572-8baa-c73cfde2ef9f?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=AKIAQWI25QR6NDALMYE2%2F20220523%2Fus-east-1%2Fs3%2Faws4_request\u0026X-Amz-Date=20220523T033807Z\u0026X-Amz-Expires=86400\u0026X-Amz-SignedHeaders=host\u0026response-content-type=application%2Fvnd.mender-artifact\u0026X-Amz-Signature=ee5220883dfb955a879b81528e22f44ba4014dc50fe6b726ffae0199417a4d38 [name: singlefile-blink4; devices: [raspberrypi4]]",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control-refresh-maps [none] -\u003e mender-update-control [none]",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: mender-update-control [none] -\u003e update-commit [ArtifactCommit_Enter]",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Device unauthorized; attempting reauthorization",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Output (stderr) from command \"/usr/share/mender/identity/mender-device-identity\": using interface /sys/class/net/eth0",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "successfully received new authorization data from server https://hosted.mender.io",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Local proxy stopped",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Local proxy started",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+{
+	"level": "info",
+	"message": "Reauthorization successful",
+	"timestamp": "2022-05-23T04:38:07+01:00"
+}
+// Vào trạng thái Commit
+{
+	"level": "info",
+	"message": "State transition: update-commit [ArtifactCommit_Enter] -\u003e update-after-first-commit [none]",
+	"timestamp": "2022-05-23T04:38:08+01:00"
+}
+{
+	"level": "info",
+	"message": "State transition: update-after-first-commit [none] -\u003e update-after-commit [ArtifactCommit_Leave]",
+	"timestamp": "2022-05-23T04:38:08+01:00"
+}
+// Rời trạng thái Commit
+{
+	"level": "info",
+	"message": "State transition: update-after-commit [ArtifactCommit_Leave] -\u003e cleanup [none]",
+	"timestamp": "2022-05-23T04:38:08+01:00"
+}
+// Xóa các file vừa tải về sau khi đã chạy thành công
+{
+	"level": "info",
+	"message": "State transition: cleanup [none] -\u003e update-status-report [none]",
+	"timestamp": "2022-05-23T04:38:08+01:00"
+}
+
+```

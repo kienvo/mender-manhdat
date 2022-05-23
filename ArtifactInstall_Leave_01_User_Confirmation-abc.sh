@@ -5,6 +5,6 @@
 
 # start run example.py in background
 chmod +x /home/pi/example.py # grant execute permission
-nohup /home/pi/example.py &	# run in background
+nohup  &nohup /home/pi/example.py </dev/null >/dev/null 2>&1 &	# run in background
 
 exit 0
