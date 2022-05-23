@@ -284,7 +284,7 @@ Nếu thành công sẽ có file output với tên đã chỉ định tạo ra t
 
 # Xem log trên `app-boards`
 
-Cơ chế log của mender: khi mender-client nhận deployment từ mender-server, mọi log của quá trình đó sẽ được lưu vào một file tại thư mục `/data/mender/` và có tên là `deployments.<stt>.<hash-deployment>.log`. `<stt>` là số thứ tự các deployment sắp xếp theo thời gian, lần deploy gần nhất có `<stt>` là `0001`, lần gần thứ 2 là `0001`,... `<hash-deployment>` là mã hash của deployment. Nội dung file log là json line-by-line có dạng:
+Cơ chế log của mender: khi mender-client nhận deployment từ mender-server, mọi log của quá trình đó sẽ được lưu vào một file tại thư mục `/data/mender/` hoặc `/var/lib/mender/` và có tên là `deployments.<stt>.<hash-deployment>.log`. `<stt>` là số thứ tự các deployment sắp xếp theo thời gian, lần deploy gần nhất có `<stt>` là `0001`, lần gần thứ 2 là `0001`,... `<hash-deployment>` là mã hash của deployment. Nội dung file log là json line-by-line có dạng:
  ```json
 {
 	"level": <log level>,
@@ -464,3 +464,70 @@ File log có nội dung (json đã được format bằng vscode):
 }
 
 ```
+
+# State csript
+
+## Các trạng thái của mender-client
+
+- `Idle`: Trạng thái nghỉ, không làm gì
+- `Sync`: Kiểm tra xem có update từ `mender-server` hay không
+- `Download`: Tải `Artifact` về
+- `ArtifactInstall`: Cài `Artifact`
+- `ArtifactReboot`: Chỉ chạy khi `Artifact` yêu cầu reboot
+- `ArtifactCommit`: Đánh dấu lần update này thành công
+- `ArtifactRollback`: Quay lại phiên bản trước, undo tất cả
+- `ArtifactRollbackReboot`: Reboot sau `ArtifactRollback`
+- `ArtifactFailure`: Nếu bất kì trạng thái trên bị lỗi, thì trạng trái này sẽ được chạy. Trạng thái này luôn được thực sau `ArtifactRollback` và `ArtifactRollbackReboot`.
+
+`state-script` chỉ chạy trong quá trình chuyển đổi giữa 2 trạng thái: "Enter" (trước khi vào trạng thái) hoặc "Leave" (rời khỏi trạng thái), hoặc "Error" (lỗi trong trạng thái, kể cả trong "Enter" và "Leave").
+
+![states](states.png)
+
+## Hai loại state-script
+
+Root file system script:
+
+- Được lưu trong `/etc/mender/scripts/`
+- Chỉ có 3 trạng thái: `Idle`, `Sync`, `Download`
+
+Artifact scripts:
+
+- Được lưu trong file `Artifact`
+- **Không** được có 3 trạng thái: `Idle`, `Sync`, `Download`
+
+## Thứ tự thực thi state-script
+
+Quy ước đặt tên state-script :
+
+```txt
+<STATE_NAME>_<ACTION>_<ORDERING_NUMBER>_<OPTIONAL_DESCRIPTION>
+
+```
+
+Ví dụ: `Download_Enter_05_wifi-driver.py` sẽ thực thi trước `Download_Enter_10_ask-user.sh`
+
+`state-script`:
+
+## Lưu ý
+
+`state-script` không nhận đối số
+
+Sử dụng [unix-shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) để khai báo trình thông dịch (interpreter) cho script. Ví dụ: `#!/usr/bin/env python3` nếu file .py hoặc `#!/usr/bin/env bash` nếu file .sh.
+
+`state-script` chỉ được trả về 3 return codes là: 
+
+- `0` - Script thực thi không có lỗi
+- `1` - Script thực thi có lỗi
+- `21` - Script sẽ được chạy lại sau. Sau khoảng thời gian chờ bằng [`StateScriptRetryIntervalSeconds`](https://docs.mender.io/client-installation/configuration-file/configuration-options#statescriptretryintervalseconds) script sẽ được chạy lại.
+
+## Script timeout
+
+Mỗi script có một khoảng thời gian quy định để thực thi ([`StateScriptTimeoutSeconds`](https://docs.mender.io/client-installation/configuration-file/configuration-options#statescripttimeoutseconds)). Nếu script chạy lâu hơn khoảng thời gian này, script này sẽ bị kill và quá trình update bị đánh dấu là lỗi.
+
+## Trường hợp mất điện đột ngột
+
+`Mender-client` sẽ chuyển vào trạng thái lỗi, kể cả `ArtifactRollback` và `ArtifactFailure`. Nếu xảy ra trong trạng thái Reboot, mender sẽ không chuyển vào trạng thái lỗi.
+
+## Log từ state script
+
+Mọi thứ ghi ra `stderr` của `state-script` sẽ được ghi vào `log-message` của file log.
