@@ -4,7 +4,6 @@
 # echo artifactIntall_enter >> /data/log.txt
 
 # start run example.py in background
-pkill -f 'example.py'	# kill all running process named example.py
 chmod +x /home/pi/example.py # grant execute permission
 nohup /home/pi/example.py &	# run in background
 

@@ -233,5 +233,51 @@ Tham số:
 
 ## Tạo deployment trên mender-server
 
+# Cách tạo artifact với state-script
 
+Thông thường, khi upload một file lên mender-server, nếu file đó không phải là file artifact thì mender-sever sẽ hiện ra 1 pop-up hỏi đường dẫn file để lưu khi update thành công, sau đó tự động chuyển file đó thành artifact (type `single-file`).
 
+Nhưng với cách trên thì không thể thêm `state-script`. Để thêm được `state-script` thì phải chạy `mender-artifact` để tạo artifact cùng với `state-script`:
+
+1. Chuẩn bị 4(+) file
+   1. Payload - file cần update
+   2. dest_dir - file có nội dung là **đường dẫn** đên thư mục mà `payload` sẽ được copy vào đó, khi update thành công. **Tên file phải là `dest_dir` và đặt trong thư mục ngang hàng với payload**
+   3. filename - file có nội dung là **tên của payload** sau khi cập nhật xong, payload sẽ được đổi tên giống như nội dung file này. **Tên file phải là `filename` và đặt trong thư mục ngang hàng với payload**
+   4. Các file state-script đặt tên theo [`naming convention` của Mender](https://docs.mender.io/artifact-creation/state-scripts#:~:text=There%20can%20be%20more%20than%20one%20script%20for%20a%20given%20state.%20Each%20script%20contains%20an%20ordering%20number%20as%20a%20part%20of%20the%20naming%20convention%2C%20which%20determines%20when%20it%20is%20run%3A)
+2. `cd` tới thư mục chứa các file trên và chạy:
+
+``` bash
+./mender-artifact write module-image 	\
+-T		single-file 					\
+-t		raspberrypi4 					\
+-n		singlefile-test7 					\
+-f		./example.py					\
+-s		./ArtifactInstall_Leave_01_User_Confirmation-abc.sh \
+-s		./ArtifactInstall_Enter_01_User_Confirmation-abc.sh \
+-f		dest_dir						\
+-f		filename 						\
+-o		singlefile.mender
+```
+
+Tham số:
+>`write module-image` - Cho mender-artifact biết đang cần tạo module-image
+>
+>`-T  single-file` - Loại artifact (single-file, script)
+>
+>`-t  raspberrypi4`	- Thiết bị tương thích
+>
+>`-n  singlefile-test7` - Tên artifact
+>
+>`-f  ./example.py` - Tên payload (file cần update)
+>
+>`-s  ./ArtifactInstall_Leave_01_User_Confirmation-abc.sh` - File state script đặt tên theo [`naming convention` của Mender](https://docs.mender.io/artifact-creation/state-scripts#:~:text=There%20can%20be%20more%20than%20one%20script%20for%20a%20given%20state.%20Each%20script%20contains%20an%20ordering%20number%20as%20a%20part%20of%20the%20naming%20convention%2C%20which%20determines%20when%20it%20is%20run%3A).
+>
+>`-s  ./ArtifactInstall_Enter_01_User_Confirmation-abc.sh` - File state script đặt tên theo [`naming convention` của Mender](https://docs.mender.io/artifact-creation/state-scripts#:~:text=There%20can%20be%20more%20than%20one%20script%20for%20a%20given%20state.%20Each%20script%20contains%20an%20ordering%20number%20as%20a%20part%20of%20the%20naming%20convention%2C%20which%20determines%20when%20it%20is%20run%3A).
+>
+>`-f  dest_dir` - Một file có tên là `dest_dir` trong thư mục hiện tại, nội dung của file này chứa **đường dẫn** đên thư mục mà `payload` sẽ được copy vào đó, khi update thành công.
+>
+>`-f  filename` - Một file có tên là `filename` trong thư mục hiện tại, nội dung của file này chứa **tên của payload** sau khi cập nhật xong, payload sẽ được đổi tên giống như nội dung file này.
+>
+>`-o  singlefile.mender` - Output artifact.
+
+Nếu thành công sẽ có file output với tên đã chỉ định tạo ra trong thư mục hiện tại.
